@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="batch-processingFlow" doc:id="a6756be4-442d-4f70-9ab8-243c6033c0bb" >
+		<http:listener doc:name="Listener" doc:id="03d30104-23f4-4936-9a32-daed38f3d597" config-ref="HTTP_Listener_config" path="/batch"/>
+		<file:read doc:name="Read" doc:id="331e8b91-d3aa-46b5-b485-a60d3c634490" config-ref="File_Config" path='input/order-details.csv'/>
+		<ee:transform doc:name="Transform Message" doc:id="ca85d381-d82d-4ae2-bea5-0e2ca8ee9fdd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="batch-processingBatch_Job" doc:id="cf618498-6afe-42fa-94d2-1699b50fff82" maxFailedRecords="-1" blockSize="500">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="f39850c3-3dc7-49bd-a2b2-5d9370dd1fe9" acceptPolicy="ALL">
+					<ee:transform doc:name="Transform Message" doc:id="dd6cd7ae-1db9-43e3-b12c-f6f1b7b02130">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+"user_id" : payload.user,
+"order_id" : payload.order,
+"product" : payload.item,
+"product_unit_price" : payload.price,
+"product_quantity" : payload.quantity,
+"total" : payload.total,
+"order_date" : payload.date
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="3d535823-bd3a-4ead-920f-d7c54aa6ada7" size="500">
+						<ee:transform doc:name="Transform Message" doc:id="9e49b10a-fafe-4da5-8684-eaa4f37b7ebf" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<file:write doc:name="Write" doc:id="31d70f8a-3aa2-4000-9e6b-cc2a3c22378f" config-ref="File_Config" path='#["output/order-details-" ++ now().milliseconds ++ "-" ++ floor(random() * 1000) ++ ".csv"]' mode="APPEND"/>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="16279ac8-e854-47ca-bb61-b08d6ceac5d5" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>

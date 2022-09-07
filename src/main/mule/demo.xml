@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="bd6d9b97-ed47-42fd-bc4b-649799d4c54b" >
+		<http:request-connection protocol="HTTPS" host="nseindia.com" />
+	</http:request-config>
+	<flow name="demoFlow" doc:id="aac8d52b-14ac-4cf7-8726-cb327686f7bd" >
+		<http:listener doc:name="Listener" doc:id="802bfdad-fcb7-4251-9118-dcbe7bc610cf" config-ref="HTTP_Listener_config" path="/demo"/>
+		<set-payload value="#[[1,2,'a','b','c',4,3,'d']]" doc:name="Set Payload" doc:id="55357fc7-a89d-4f8b-8ac4-c8820f5b99fd" />
+		<batch:job jobName="demoBatch_Job" doc:id="10cae641-a4fc-4a3e-94a8-9b651cfd167e" blockSize="2" maxFailedRecords="-1">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="18f8c9fd-f77d-4b10-b414-f33ff353d07d" acceptExpression="payload &lt; 3">
+					<ee:transform doc:name="Transform Message" doc:id="5c086cbe-c1d8-484e-bb3f-aca40c7f48c0" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload * 2]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="72c9d4a1-efcb-47fa-923c-03e29603b90d" message="#[payload]"/>
+				</batch:step>
+				<batch:step name="Batch_Step1" doc:id="4075d4f6-245f-4d76-a04e-dc9c8b42dfba" acceptPolicy="ONLY_FAILURES">
+					<logger level="INFO" doc:name="Logger" doc:id="efea728b-6567-455b-ac32-7be5452e8174" message="#[payload]" />
+				</batch:step>
+			</batch:process-records>
+		</batch:job>
+	</flow>
+</mule>

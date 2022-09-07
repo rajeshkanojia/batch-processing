@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="order-detail-input-format" format="csv">
+      <types:shape format="weave" example="metadata-example/order-detail-input-format.csv"><![CDATA[%dw 2.0
+
+type order_detail_input_format = Array<{|  user: String,   order: String,   item: String,   price: String,   quantity: String,   total: String,   date: String|}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+    <types:type name="transaction-details-input-format" format="csv">
+      <types:shape format="weave" example="metadata-example/transaction-detail-input-format.csv"><![CDATA[%dw 2.0
+
+type transaction_details_input_format = Array<{|  transaction_id: String,   user_id: String,   amount: String,   status: String,   date: String|}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#dd6cd7ae-1db9-43e3-b12c-f6f1b7b02130">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="order-detail-input-format"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#f39850c3-3dc7-49bd-a2b2-5d9370dd1fe9">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="order-detail-input-format"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#87af6978-7b02-4b2c-a38d-48ffeaa38230">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="transaction-details-input-format"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

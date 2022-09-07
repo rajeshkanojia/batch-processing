@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="transaction-summaryFlow" doc:id="ab8ba6d1-d536-49c4-926c-3834bb3c4702" >
+		<http:listener doc:name="Listener" doc:id="de01e86a-2cd1-483c-b77d-e47d044fa3b8" config-ref="HTTP_Listener_config" path="/transaction"/>
+		<file:read doc:name="Read" doc:id="546d9d58-8fa7-4e5e-b819-bc00ef71b876" config-ref="File_Config" path='#["input/transaction-details.csv"]'/>
+		<file:write doc:name="add header row - failed" doc:id="b84e59ab-d91e-4f6f-9486-010499bf483b" config-ref="File_Config" path='#["output/failed-transaction-details.csv"]' mode="APPEND">
+						<file:content><![CDATA[#[%dw 2.0
+output application/csv header=false
+---
+{
+	"transaction_id" :"transaction_id",
+	"transaction_date" : "transaction_date",
+	"transaction_status" : "transaction_status",
+	"user_id" : "user_id",
+	"transaction_amount" : "transaction_amount"	
+}]]]></file:content>
+					</file:write>
+		<file:write doc:name="add header row - pending" doc:id="3fd89ea8-accb-4fb5-8cfe-7d86752ee7fc" config-ref="File_Config" path='#["output/pending-transactions-details.csv"]' mode="APPEND">
+						<file:content><![CDATA[#[%dw 2.0
+output application/csv header=false
+---
+{
+	"transaction_id" :"transaction_id",
+	"transaction_date" : "transaction_date",
+	"transaction_status" : "transaction_status",
+	"user_id" : "user_id",
+	"transaction_amount" : "transaction_amount"	
+}]]]></file:content>
+					</file:write>
+		<file:write doc:name="add header row - success" doc:id="af8d788c-0786-4254-9b77-6be220a9f5d5" config-ref="File_Config" path='#["output/success-transaction-details.csv"]' mode="APPEND">
+						<file:content><![CDATA[#[%dw 2.0
+output application/csv header=false
+---
+{
+	"transaction_id" :"transaction_id",
+	"transaction_date" : "transaction_date",
+	"transaction_status" : "transaction_status",
+	"user_id" : "user_id",
+	"transaction_amount" : "transaction_amount"	
+}]]]></file:content>
+					</file:write>
+		<ee:transform doc:name="Transform Message" doc:id="cb717ee2-b2ea-452b-a7f0-ba6a31c425fe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="transaction-summaryBatch_Job" doc:id="87af6978-7b02-4b2c-a38d-48ffeaa38230">
+			<batch:process-records>
+				<batch:step name="Allrecords" doc:id="0805b9a4-62ed-4116-a03f-61152d513dac" acceptPolicy="ALL">
+					<ee:transform doc:name="Transform Message" doc:id="c9088266-f500-4678-ab93-07379b9f69f9">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"user_id" : payload.user_id,
+	"transaction_id" : payload."transaction_id",
+	"transaction_amount" : payload.amount,
+	"transaction_status" : payload.status,
+	"transaction_date" : payload.date
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</batch:step>
+				<batch:step name="failed-transactions" doc:id="4ef073d8-617d-4d5e-8c8d-95bbe5325105" acceptExpression='payload.transaction_status == "failed"'>
+					<ee:transform doc:name="Transform Message" doc:id="a438b253-804b-4b82-a4a8-f336db83468d" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="f8d4f9f2-d653-463b-a08e-6ddbe1134b02" size="100">
+						<ee:transform doc:name="Transform Message" doc:id="acf40dfd-d747-4bd9-848a-b62d17e5c143" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header=false
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<file:write doc:name="Write" doc:id="b163f8a2-042d-487c-b443-91aab29b4ee2" config-ref="File_Config" path='#["output/failed-transaction-details.csv"]' mode="APPEND"/>
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="pending-transactions" doc:id="47a8b699-cce5-4c79-9995-7004bb3ad2c3" acceptExpression='payload.transaction_status == "pending"'>
+					<ee:transform doc:name="Transform Message" doc:id="921b98d2-b537-49c0-a1e8-07e2cd5d4082" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="e8ca1f83-172a-49cc-9d29-e5606688ac77" size="100">
+						<ee:transform doc:name="Transform Message" doc:id="0d8c353a-fd15-4c58-be5e-f308caf80d33" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header=false
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<file:write doc:name="Write" doc:id="2377bbf9-5376-48f0-9bb1-17d33e55534f" config-ref="File_Config" path='#["output/pending-transactions-details.csv"]' mode="APPEND"/>
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="success-transaction" doc:id="95778a64-064a-43e0-85fd-dd990ec1443a" acceptExpression='payload.transaction_status == "success"'>
+					<ee:transform doc:name="Transform Message" doc:id="4ace4b0c-5b34-4936-aa8f-bef5ce2c116f" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="0a55411f-e0c9-4624-9ddf-d86f25aa3997" size="100">
+						<ee:transform doc:name="Transform Message" doc:id="6adcc369-ea99-4283-943e-15d4b9a7accd" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header=false
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<file:write doc:name="Write" doc:id="dc12b190-751b-4956-bce7-8fe1c88bd0c7" config-ref="File_Config" path='#["output/success-transaction-details.csv"]' mode="APPEND">
+						</file:write>
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="Batch_Step" doc:id="28ea9623-c10e-42e7-9637-d1a53c32f565" acceptPolicy="ONLY_FAILURES">
+					<logger level="INFO" doc:name="Logger" doc:id="2ec0326a-bb6d-42d4-8587-562de751a800" message="#[payload]" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete>
+				<logger level="INFO" doc:name="Logger" doc:id="2adf0f64-4e7c-4155-ad53-1bab7a01155e" message="#[payload]" />
+			</batch:on-complete>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="b43a015c-fdbf-4c55-a5d9-1c2ffb39af05" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+message]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

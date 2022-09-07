@@ -1,0 +1,4 @@
+http:
+  port: "8081"
+file:
+  workingDir: "C:\\Users\\Rajesh\\AnypointStudio\\studio-workspace\\batch-processing\\src\\main\\resources\\data"
